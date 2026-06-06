@@ -1,14 +1,37 @@
 version: 0.2
 
 phases:
+
   pre_build:
     commands:
-      - echo Logging in to ECR
+      - echo Logging in to Amazon ECR...
+
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+      - AWS_DEFAULT_REGION=ap-south-1
+
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/hiqode-app
+
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+
+      - IMAGE_TAG=$CODEBUILD_BUILD_NUMBER
 
   build:
     commands:
-      - echo Build Started
+      - echo Build started
+
+      - docker build -t hiqode-app .
+
+      - docker tag hiqode-app:latest $REPOSITORY_URI:$IMAGE_TAG
+
+      - docker tag hiqode-app:latest $REPOSITORY_URI:latest
 
   post_build:
     commands:
-      - echo Build Completed
+      - echo Pushing image to ECR...
+
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+
+      - docker push $REPOSITORY_URI:latest
+
+      - echo Build completed
